@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Prototype - Quản lý CLB Âm nhạc (Upload & Đánh giá Video)</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--muted:#9aa4b2;--accent:#6ee7b7;--glass:rgba(255,255,255,0.03)}
+    *{box-sizing:border-box;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial}
+    body{margin:0;background:linear-gradient(180deg,#061021 0%, #071428 100%);color:#e6eef6}
+    .wrap{display:grid;grid-template-columns:320px 1fr;gap:20px;padding:24px;min-height:100vh}
+    .sidebar{background:var(--card);border-radius:12px;padding:16px;box-shadow:0 6px 18px rgba(2,6,23,0.6)}
+    h2{margin:0 0 8px;font-size:18px}
+    label{font-size:13px;color:var(--muted)}
+    input,select,textarea,button{font-size:14px}
+    .section{margin-bottom:18px}
+
+    .field{display:flex;gap:8px;align-items:center;margin:8px 0}
+    .field input[type="text"],.field input[type="number"],.field select{flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit}
+    .btn{padding:8px 12px;border-radius:8px;border:0;background:var(--accent);color:#012;cursor:pointer}
+    .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
+
+    .main{padding:16px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));box-shadow:0 8px 28px rgba(2,6,23,0.5)}
+    .grid{display:grid;grid-template-columns:1fr 420px;gap:16px}
+
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;border-bottom:1px dashed rgba(255,255,255,0.03);text-align:left;font-size:13px}
+
+    .card{background:var(--glass);padding:12px;border-radius:10px}
+    .video-preview{width:100%;height:220px;background:#000;border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+    .small{font-size:12px;color:var(--muted)}
+    .criteria{display:flex;flex-direction:column;gap:6px}
+    .criteria .row{display:flex;gap:8px;align-items:center}
+    .criteria input[type=range]{flex:1}
+
+    .report-list{max-height:260px;overflow:auto}
+    .kpi{display:flex;gap:12px}
+    .kpi .item{flex:1;padding:12px;background:rgba(255,255,255,0.02);border-radius:10px;text-align:center}
+
+    footer{padding:12px;text-align:center;color:var(--muted);font-size:13px}
+
+    @media (max-width:900px){.wrap{grid-template-columns:1fr;padding:12px}.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <aside class="sidebar">
+      <h2>Quản lý CLB Âm nhạc</h2>
+      <p class="small">Prototype dùng localStorage để lưu dữ liệu. Dùng trình duyệt Chrome/Edge để demo tốt nhất.</p>
+
+      <div class="section card" style="margin-top:12px">
+        <h3 style="font-size:14px;margin:0 0 8px">Thành viên</h3>
+        <div class="field"><input id="mName" placeholder="Họ tên" type="text"><input id="mClass" placeholder="Lớp" type="text"></div>
+        <div class="field"><select id="role"><option value="Ca sĩ">Ca sĩ</option><option value="Nhạc cụ">Nhạc cụ</option><option value="Biên đạo">Biên đạo</option><option value="Hỗ trợ">Hỗ trợ</option></select><button class="btn" id="addMember">Thêm</button></div>
+        <div style="margin-top:8px"><table id="membersTable"><thead><tr><th>Họ tên</th><th>Lớp</th><th>Vai trò</th></tr></thead><tbody></tbody></table></div>
+      </div>
+
+      <div class="section card">
+        <h3 style="font-size:14px;margin:0 0 8px">Hoạt động</h3>
+        <div class="field"><input id="evName" placeholder="Tên hoạt động" type="text"></div>
+        <div class="field"><input id="evDate" placeholder="Ngày (YYYY-MM-DD)" type="date"><button class="btn" id="addEvent">Thêm</button></div>
+        <div id="eventsList" style="margin-top:8px;max-height:120px;overflow:auto"></div>
+      </div>
+
+      <div class="section card">
+        <h3 style="font-size:14px;margin:0 0 8px">Dữ liệu & Sao lưu</h3>
+        <div class="field"><button class="btn ghost" id="exportData">Xuất JSON</button><button class="btn ghost" id="importData">Nhập JSON</button></div>
+        <p class="small">Lưu ý: video lớn có thể không lưu vào localStorage. Chọn "Xuất JSON" để sao lưu dữ liệu (không bao gồm file video lớn).</p>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="grid">
+        <section>
+          <h2>Upload & Đánh giá Video</h2>
+          <p class="small">Tải video biểu diễn lên, chọn tiêu chí chấm điểm, và lưu nhận xét.</p>
+
+          <div class="card" style="margin-top:12px">
+            <label class="small">Chọn học sinh</label>
+            <select id="selMember"></select>
+            <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+              <input type="file" accept="video/*" id="videoFile">
+              <input id="videoTitle" placeholder="Tiêu đề (ví dụ: Solo Tiếng hát)" style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit">
+              <button class="btn" id="uploadBtn">Tải lên</button>
+            </div>
+            <div style="margin-top:12px" id="uploadMsg" class="small"></div>
+          </div>
+
+          <div class="card" style="margin-top:12px">
+            <h3 style="margin:0 0 8px">Xem & Chấm</h3>
+            <div class="video-preview" id="videoWrap"> <span class="small">Chưa có video</span></div>
+
+            <div style="margin-top:8px" class="criteria">
+              <div class="row"><label class="small" style="width:140px">Kỹ thuật (0-10)</label><input id="c1" type="range" min="0" max="10" value="7"><span id="v1" class="small">7</span></div>
+              <div class="row"><label class="small" style="width:140px">Âm sắc & Thanh nhạc (0-10)</label><input id="c2" type="range" min="0" max="10" value="7"><span id="v2" class="small">7</span></div>
+              <div class="row"><label class="small" style="width:140px">Biểu cảm & Sân khấu (0-10)</label><input id="c3" type="range" min="0" max="10" value="7"><span id="v3" class="small">7</span></div>
+              <div class="row"><label class="small" style="width:140px">Ý tưởng & Sáng tạo (0-10)</label><input id="c4" type="range" min="0" max="10" value="7"><span id="v4" class="small">7</span></div>
+              <div style="display:flex;gap:8px;margin-top:8px;align-items:center"><input id="judgeNote" placeholder="Nhận xét ngắn" style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit"><button class="btn" id="saveEval">Lưu đánh giá</button></div>
+            </div>
+
+          </div>
+
+          <div class="card" style="margin-top:12px">
+            <h3 style="margin:0 0 8px">Bảng đánh giá</h3>
+            <div class="report-list" id="evalList"></div>
+          </div>
+        </section>
+
+        <aside>
+          <div class="card">
+            <h3 style="margin:0 0 8px">Thông tin video</h3>
+            <div id="metaList" class="small"></div>
+          </div>
+
+          <div class="card" style="margin-top:12px">
+            <h3 style="margin:0 0 8px">KPI & Thống kê</h3>
+            <div class="kpi" id="kpiWrap">
+              <div class="item"><div style="font-size:20px" id="totalVideos">0</div><div class="small">Video</div></div>
+              <div class="item"><div style="font-size:20px" id="avgScore">0</div><div class="small">Điểm TB</div></div>
+            </div>
+            <canvas id="chart" width="380" height="180" style="margin-top:12px;background:transparent;border-radius:8px"></canvas>
+          </div>
+        </aside>
+      </div>
+
+      <footer>Prototype đơn giản: dữ liệu lưu local (localStorage). Yêu cầu thêm tính năng, mình sẽ mở rộng.</footer>
+    </main>
+  </div>
+
+  <script>
+    // ---------- Storage helpers ----------
+    const DBKEY = 'clb_music_v1';
+    function loadDB(){try{return JSON.parse(localStorage.getItem(DBKEY) || '{}')}catch(e){return {}}}
+    function saveDB(db){localStorage.setItem(DBKEY, JSON.stringify(db))}
+    let db = loadDB();
+    if(!db.members) db.members = [];
+    if(!db.events) db.events = [];
+    if(!db.videos) db.videos = [];
+    if(!db.evals) db.evals = [];
+    saveDB(db);
+
+    // ---------- Members ----------
+    const membersTable = document.querySelector('#membersTable tbody');
+    const selMember = document.getElementById('selMember');
+    function renderMembers(){membersTable.innerHTML='';selMember.innerHTML='';db.members.forEach((m,idx)=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${m.name}</td><td>${m.cls||''}</td><td>${m.role}</td>`;
+      membersTable.appendChild(tr);
+      const opt = document.createElement('option'); opt.value = idx; opt.textContent = m.name + (m.cls? ' ('+m.cls+')':''); selMember.appendChild(opt);
+    });
+  }
+  document.getElementById('addMember').addEventListener('click',()=>{
+    const name = document.getElementById('mName').value.trim(); const cls = document.getElementById('mClass').value.trim(); const role = document.getElementById('role').value;
+    if(!name){alert('Nhập họ tên');return}
+    db.members.push({name,cls,role}); saveDB(db); renderMembers(); document.getElementById('mName').value='';document.getElementById('mClass').value='';
+  });
+
+  // ---------- Events ----------
+  function renderEvents(){const wrap=document.getElementById('eventsList');wrap.innerHTML=''; db.events.forEach((e,i)=>{const d=document.createElement('div');d.className='small';d.textContent=`${e.date} — ${e.name}`;wrap.appendChild(d)});}
+  document.getElementById('addEvent').addEventListener('click',()=>{const name=document.getElementById('evName').value.trim();const date=document.getElementById('evDate').value; if(!name||!date){alert('Nhập tên và ngày');return} db.events.push({name,date}); saveDB(db); renderEvents(); document.getElementById('evName').value=''; document.getElementById('evDate').value='';});
+
+  // ---------- Upload video (small) ----------
+  const videoFile = document.getElementById('videoFile'); const uploadBtn = document.getElementById('uploadBtn'); const uploadMsg = document.getElementById('uploadMsg'); const videoWrap = document.getElementById('videoWrap'); const metaList = document.getElementById('metaList');
+  let currentVideoObj = null;
+
+  uploadBtn.addEventListener('click', async ()=>{
+    const file = videoFile.files[0]; const title = document.getElementById('videoTitle').value.trim(); const mIdx = selMember.value;
+    if(!file || !title){alert('Chọn video và đặt tiêu đề');return}
+    if(!mIdx){alert('Chọn học sinh');return}
+
+    uploadMsg.textContent = 'Đang xử lý video...';
+    // convert to base64 if small (<2MB), otherwise store metadata and objectURL in session
+    const maxInLocal = 2*1024*1024; // 2MB
+    let dataUrl = null;
+    if(file.size <= maxInLocal){ dataUrl = await toBase64(file); }
+    const obj = {id:Date.now()+'' , title, member:parseInt(mIdx), name:db.members[mIdx].name, fileName:file.name, size:file.size, dataUrl, created: new Date().toISOString() };
+    db.videos.push(obj); saveDB(db); renderVideos(); uploadMsg.textContent='Tải lên thành công.'; document.getElementById('videoTitle').value=''; videoFile.value='';
+  });
+
+  function toBase64(file){ return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(file)})}
+
+  function renderVideos(){ // show last video meta
+    metaList.innerHTML=''; if(db.videos.length===0){metaList.innerHTML='<div class="small">Chưa upload video.</div>'; document.getElementById('totalVideos').textContent='0'; updateChart(); return}
+    const last = db.videos[db.videos.length-1];
+    const d = document.createElement('div'); d.innerHTML = `<div><strong>${escapeHtml(last.title)}</strong></div><div class="small">Người biểu diễn: ${escapeHtml(last.name)} — ${new Date(last.created).toLocaleString()}</div><div class="small">Tập tin: ${last.fileName} (${formatSize(last.size)})</div>`;
+    metaList.appendChild(d);
+    document.getElementById('totalVideos').textContent = db.videos.length;
+    updateChart();
+  }
+
+  function escapeHtml(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+  function formatSize(n){if(n<1024) return n+' B'; if(n<1024*1024) return (n/1024).toFixed(1)+' KB'; return (n/1024/1024).toFixed(2)+' MB'}
+
+  // ---------- Evaluation UI ----------
+  const ranges = ['c1','c2','c3','c4']; ranges.forEach(id=>{const el=document.getElementById(id);const vd=document.getElementById('v'+id.replace('c','')); el.addEventListener('input',()=>{document.getElementById('v'+id.replace('c','')).textContent = el.value})})
+
+  document.getElementById('saveEval').addEventListener('click',()=>{
+    if(db.videos.length===0){alert('Chưa có video để chấm.');return}
+    const vid = db.videos[db.videos.length-1]; // simplified: choose last video for demo
+    const scores = ranges.map(id=>parseInt(document.getElementById(id).value));
+    const total = scores.reduce((a,b)=>a+b,0);
+    const note = document.getElementById('judgeNote').value.trim();
+    const rec = {id:Date.now()+'', videoId:vid.id, member:vid.member, scores, total, note, created:new Date().toISOString(), title:vid.title};
+    db.evals.push(rec); saveDB(db); renderEvals(); updateChart(); document.getElementById('judgeNote').value='';
+  });
+
+  function renderEvals(){const wrap = document.getElementById('evalList'); wrap.innerHTML=''; if(db.evals.length===0){wrap.innerHTML='<div class="small">Chưa có đánh giá.</div>'; document.getElementById('avgScore').textContent='0'; return}
+    db.evals.slice().reverse().forEach(ev=>{const d=document.createElement('div');d.style.padding='8px';d.style.borderBottom='1px solid rgba(255,255,255,0.03)';d.innerHTML = `<div><strong>${escapeHtml(ev.title)}</strong> — ${new Date(ev.created).toLocaleString()}</div><div class="small">Người: ${escapeHtml(db.members[ev.member]?.name||'—')} | Điểm: ${ev.total} | Nhận xét: ${escapeHtml(ev.note||'—')}</div>`; wrap.appendChild(d)});
+    const avg = (db.evals.reduce((s,e)=>s+e.total,0)/db.evals.length).toFixed(1);
+    document.getElementById('avgScore').textContent = avg;
+  }
+
+  // ---------- Chart (simple bar of latest 8 scores) ----------
+  const chart = document.getElementById('chart'); const ctx = chart.getContext('2d');
+  function updateChart(){ ctx.clearRect(0,0,chart.width,chart.height); const list = db.evals.slice(-8); if(list.length===0){ctx.fillStyle='rgba(255,255,255,0.06)';ctx.font='13px Arial';ctx.fillText('Chưa có dữ liệu đánh giá',20,80);return}
+    const pad=24; const w = chart.width - pad*2; const h = chart.height - pad*2; const bw = w / list.length * 0.7; const gap = (w - bw*list.length)/(list.length-1 || 1);
+    const max = Math.max(...list.map(x=>x.total),30);
+    list.forEach((it,i)=>{
+      const x = pad + i*(bw+gap);
+      const hh = (it.total / max) * h;
+      ctx.fillStyle='rgba(110,231,183,0.9)'; ctx.fillRect(x, pad + (h-hh), bw, hh);
+      ctx.fillStyle='rgba(255,255,255,0.8)'; ctx.font='12px Arial'; ctx.fillText(it.total, x+4, pad + (h-hh)-6);
+      ctx.fillStyle='rgba(255,255,255,0.6)'; ctx.font='11px Arial'; ctx.fillText(it.title.slice(0,12), x+4, pad + h + 14);
+    });
+  }
+
+  // ---------- Export / Import ----------
+  document.getElementById('exportData').addEventListener('click',()=>{
+    const copy = Object.assign({}, db);
+    // avoid exporting large dataUri unintentionally
+    copy.videos = copy.videos.map(v=>Object.assign({},v,{dataUrl: v.dataUrl? '[truncated]' : null}));
+    const blob = new Blob([JSON.stringify(copy,null,2)],{type:'application/json'});
+    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='clb_data.json'; a.click(); URL.revokeObjectURL(url);
+  });
+  document.getElementById('importData').addEventListener('click',()=>{
+    const paste = prompt('Dán JSON dữ liệu (như file xuất) vào đây:'); if(!paste) return; try{ const obj = JSON.parse(paste); if(confirm('Gộp dữ liệu vào dữ liệu hiện tại? OK = gộp, Cancel = ghi đè')){ // merge
+      obj.members&&obj.members.forEach(m=>db.members.push(m)); obj.events&&obj.events.forEach(e=>db.events.push(e)); obj.videos&&obj.videos.forEach(v=>db.videos.push(v)); obj.evals&&obj.evals.forEach(ev=>db.evals.push(ev));
+    } else { db = obj; }
+    saveDB(db); renderAll(); alert('Đã nhập.'); }catch(e){alert('JSON không hợp lệ')}
+  });
+
+  // ---------- Utilities & init ----------
+  function renderAll(){ renderMembers(); renderEvents(); renderVideos(); renderEvals(); }
+  renderAll();
+
+  // small UX: show last video in preview
+  document.addEventListener('click', ()=>{
+    if(db.videos.length>0){ const v = db.videos[db.videos.length-1]; showVideo(v); }
+  });
+  function showVideo(v){ videoWrap.innerHTML=''; let vidEl = document.createElement('video'); vidEl.controls=true; vidEl.style.width='100%'; vidEl.style.height='100%'; if(v.dataUrl){ vidEl.src = v.dataUrl; } else { // no base64 stored; can't access file content after reload - show placeholder
+      const placeholder = document.createElement('div'); placeholder.className='small'; placeholder.style.padding='12px'; placeholder.textContent='Video lưu ở phiên làm việc (nếu bạn chưa tải base64). Tải video nhỏ (<2MB) để lưu được trong bộ nhớ.'; videoWrap.appendChild(placeholder); return;
+    }
+    videoWrap.appendChild(vidEl);
+  }
+
+  // expose db reset via console for testing
+  window.__CLB_DB = db;
+
+  // helper to update range labels
+  ['c1','c2','c3','c4'].forEach((id,i)=>{const el=document.getElementById(id);const lbl=document.getElementById('v'+(i+1)); el.addEventListener('input',()=>lbl.textContent=el.value)});
+
+  // initial small render
+  if(db.videos.length>0) showVideo(db.videos[db.videos.length-1]);
+
+  // end script
+  </script>
+</body>
+</html>

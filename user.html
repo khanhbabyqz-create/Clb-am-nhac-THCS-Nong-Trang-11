@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>CLB Âm nhạc - Nộp bài</title>
+
+<style>
+body{
+  margin:0;
+  font-family:Arial;
+  background:#020617;
+  color:#fff;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}
+
+.box{
+  width:350px;
+  padding:20px;
+  border-radius:12px;
+  background:#0f172a;
+}
+
+input,button{
+  width:100%;
+  margin:6px 0;
+  padding:10px;
+  border-radius:8px;
+  border:none;
+}
+
+button{
+  background:#22c55e;
+  font-weight:bold;
+}
+
+.hidden{display:none;}
+</style>
+</head>
+
+<body>
+
+<div class="box" id="auth">
+  <h2>Đăng ký / Đăng nhập</h2>
+  <input id="name" placeholder="Tên">
+  <input id="email" placeholder="Email">
+  <input id="phone" placeholder="SĐT">
+  <button onclick="login()">Vào hệ thống</button>
+</div>
+
+<div class="box hidden" id="app">
+  <h2>Nộp bài biểu diễn</h2>
+  <input id="title" placeholder="Tiêu đề video">
+  <input type="file" id="file">
+  <button onclick="upload()">Tải lên</button>
+</div>
+
+<script>
+let db = JSON.parse(localStorage.getItem("db")||"{}");
+if(!db.users) db.users=[];
+if(!db.videos) db.videos=[];
+
+function login(){
+  const user={
+    name:document.getElementById("name").value,
+    email:document.getElementById("email").value,
+    phone:document.getElementById("phone").value
+  };
+
+  if(!user.name) return alert("Nhập tên");
+
+  db.users.push(user);
+  localStorage.setItem("db",JSON.stringify(db));
+
+  document.getElementById("auth").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+}
+
+function upload(){
+  const file=document.getElementById("file").files[0];
+  const title=document.getElementById("title").value;
+
+  if(!file) return alert("Chọn video");
+
+  const video={
+    title,
+    name:db.users[db.users.length-1].name,
+    time:new Date().toLocaleString()
+  };
+
+  db.videos.push(video);
+  localStorage.setItem("db",JSON.stringify(db));
+
+  alert("Đã nộp!");
+}
+</script>
+
+</body>
+</html>
